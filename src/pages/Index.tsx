@@ -8,6 +8,7 @@ import { useState } from "react";
 import { analyzeResume } from "@/services/gemini";
 import AnalysisProgress from "@/components/AnalysisProgress";
 import ResumeRankings from "@/components/ResumeRankings";
+import { toast } from "sonner";
 
 const Index = () => {
   const [resumeData, setResumeData] = useState<ResumeData[]>([]);
