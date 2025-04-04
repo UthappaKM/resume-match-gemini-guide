@@ -7,42 +7,83 @@ import { AnalysisResult, ResumeData } from "@/types";
 import { useState } from "react";
 import { analyzeResume } from "@/services/gemini";
 import AnalysisProgress from "@/components/AnalysisProgress";
+import ResumeRankings from "@/components/ResumeRankings";
 
 const Index = () => {
-  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [results, setResults] = useState<AnalysisResult | null>(null);
+  const [resumeData, setResumeData] = useState<ResumeData[]>([]);
+  const [analyzingResumes, setAnalyzingResumes] = useState<string[]>([]);
+  const [results, setResults] = useState<AnalysisResult[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
 
-  const handleResumeUpload = (data: ResumeData) => {
+  const handleResumeUpload = (data: ResumeData[]) => {
     setResumeData(data);
-    // Reset any previous results
-    setResults(null);
-  };
-
-  const handleAnalyze = async (jobDescription: string) => {
-    if (!resumeData) return;
     
-    setIsAnalyzing(true);
-    setResults(null);
-    
-    try {
-      const analysisResult = await analyzeResume({
-        resumeText: resumeData.text,
-        jobDescription
-      });
-      
-      setResults(analysisResult);
-    } catch (error) {
-      console.error("Analysis failed:", error);
-    } finally {
-      setIsAnalyzing(false);
+    // If we're removing resumes, remove their results too
+    if (data.length < resumeData.length) {
+      const currentIds = data.map(r => r.id);
+      setResults(prev => prev.filter(r => currentIds.includes(r.resumeId)));
+      if (selectedResumeId && !currentIds.includes(selectedResumeId)) {
+        setSelectedResumeId(null);
+      }
     }
   };
 
-  const handleReset = () => {
-    setResumeData(null);
-    setResults(null);
+  const handleAnalyze = async (jobDescription: string) => {
+    if (resumeData.length === 0) {
+      toast.error("Please upload at least one resume");
+      return;
+    }
+    
+    // Reset previous results
+    setResults([]);
+    setSelectedResumeId(null);
+    
+    const newAnalyzingResumes = resumeData.map(r => r.id);
+    setAnalyzingResumes(newAnalyzingResumes);
+    
+    try {
+      const allResults: AnalysisResult[] = [];
+      
+      // Analyze each resume
+      for (const resume of resumeData) {
+        const analysisResult = await analyzeResume({
+          resumeText: resume.text,
+          jobDescription,
+          resumeId: resume.id,
+          fileName: resume.fileName
+        });
+        
+        allResults.push(analysisResult);
+        
+        // Update the list of resumes still being analyzed
+        setAnalyzingResumes(prev => prev.filter(id => id !== resume.id));
+        
+        // Update results as they come in
+        setResults(prev => [...prev, analysisResult]);
+      }
+      
+    } catch (error) {
+      console.error("Analysis failed:", error);
+    } finally {
+      setAnalyzingResumes([]);
+    }
   };
+
+  const handleViewDetails = (resumeId: string) => {
+    setSelectedResumeId(resumeId);
+  };
+
+  const handleReset = () => {
+    setResumeData([]);
+    setResults([]);
+    setSelectedResumeId(null);
+    setAnalyzingResumes([]);
+  };
+
+  const isAnalyzing = analyzingResumes.length > 0;
+  const selectedResult = selectedResumeId 
+    ? results.find(r => r.resumeId === selectedResumeId) 
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,7 +101,7 @@ const Index = () => {
               </p>
             </div>
             
-            {(resumeData || results) && (
+            {(resumeData.length > 0 || results.length > 0) && (
               <Button variant="outline" onClick={handleReset}>
                 Start Over
               </Button>
@@ -71,20 +112,39 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4">
-        {results ? (
-          <MatchResults results={results} />
+        {selectedResult ? (
+          <div className="space-y-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedResumeId(null)}
+              className="mb-4"
+            >
+              ← Back to Rankings
+            </Button>
+            <MatchResults results={selectedResult} />
+          </div>
+        ) : results.length > 0 ? (
+          <ResumeRankings results={results} onViewDetails={handleViewDetails} />
         ) : (
           <div className="grid md:grid-cols-2 gap-8">
-            <ResumeUpload onResumeUpload={handleResumeUpload} />
+            <ResumeUpload 
+              onResumeUpload={handleResumeUpload} 
+              uploadedResumes={resumeData}
+            />
             
             <div className="space-y-4">
               <JobDescription 
                 onSubmit={handleAnalyze} 
                 isLoading={isAnalyzing} 
-                resumeUploaded={!!resumeData}
+                resumeUploaded={resumeData.length > 0}
               />
               
-              {isAnalyzing && <AnalysisProgress />}
+              {isAnalyzing && (
+                <AnalysisProgress 
+                  totalResumes={resumeData.length} 
+                  completedResumes={resumeData.length - analyzingResumes.length} 
+                />
+              )}
             </div>
           </div>
         )}

@@ -2,8 +2,6 @@
 import { AnalysisRequest, AnalysisResult } from "@/types";
 import { toast } from "sonner";
 
-// This is a mock implementation for now
-// In a real app, you would need to add your Gemini API key
 export const analyzeResume = async (
   data: AnalysisRequest
 ): Promise<AnalysisResult> => {
@@ -18,6 +16,8 @@ export const analyzeResume = async (
     const matchPercentage = Math.floor(Math.random() * 31) + 60; // Random match between 60-90%
     
     return {
+      resumeId: data.resumeId,
+      fileName: data.fileName,
       matchPercentage,
       strengths: [
         "Strong technical background in required skills",
@@ -35,12 +35,6 @@ export const analyzeResume = async (
       },
       detailedFeedback: "Your resume shows strong foundational skills, but could be better tailored to this specific position. Consider highlighting your experience with relevant tools and methodologies mentioned in the job description. Quantifying your achievements would make your experience more compelling. Adding industry-specific keywords would improve your visibility in automated screening systems."
     };
-    
-    // For actual Gemini API implementation, you would:
-    // 1. Format the prompt for Gemini with both resume and job description
-    // 2. Call the API with the proper prompt engineering
-    // 3. Parse the response to extract structured data
-    // 4. Return the structured data as AnalysisResult
     
   } catch (error) {
     console.error("Analysis error:", error);

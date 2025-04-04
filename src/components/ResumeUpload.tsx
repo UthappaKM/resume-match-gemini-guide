@@ -3,19 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResumeData } from "@/types";
-import { FileUp } from "lucide-react";
+import { FileUp, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { extractTextFromPDF } from "@/services/gemini";
+import { v4 as uuidv4 } from "uuid";
 
 interface ResumeUploadProps {
-  onResumeUpload: (resumeData: ResumeData) => void;
+  onResumeUpload: (resumeData: ResumeData[]) => void;
+  uploadedResumes: ResumeData[];
 }
 
-const ResumeUpload = ({ onResumeUpload }: ResumeUploadProps) => {
+const ResumeUpload = ({ onResumeUpload, uploadedResumes }: ResumeUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
 
   const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -27,31 +28,42 @@ const ResumeUpload = ({ onResumeUpload }: ResumeUploadProps) => {
     }
   };
 
-  const handleFile = async (file: File) => {
-    if (file.type !== "application/pdf") {
-      toast.error("Please upload a PDF file");
+  const handleFiles = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    const pdfFiles = fileArray.filter(file => file.type === "application/pdf");
+    
+    if (pdfFiles.length === 0) {
+      toast.error("Please upload PDF files only");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size exceeds 5MB limit");
+    if (pdfFiles.some(file => file.size > 5 * 1024 * 1024)) {
+      toast.error("One or more files exceed the 5MB limit");
       return;
     }
 
     try {
       setIsUploading(true);
-      setFileName(file.name);
       
-      const text = await extractTextFromPDF(file);
+      const newResumes: ResumeData[] = [];
       
-      onResumeUpload({
-        text,
-        fileName: file.name
-      });
-      toast.success("Resume uploaded successfully!");
+      // Process each file in sequence
+      for (const file of pdfFiles) {
+        const text = await extractTextFromPDF(file);
+        newResumes.push({
+          text,
+          fileName: file.name,
+          id: uuidv4()
+        });
+      }
+      
+      const updatedResumes = [...uploadedResumes, ...newResumes];
+      onResumeUpload(updatedResumes);
+      
+      toast.success(`${pdfFiles.length} resume${pdfFiles.length > 1 ? 's' : ''} uploaded successfully!`);
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error("Failed to process resume. Please try again.");
+      toast.error("Failed to process resumes. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -63,14 +75,20 @@ const ResumeUpload = ({ onResumeUpload }: ResumeUploadProps) => {
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await handleFile(e.dataTransfer.files[0]);
+      await handleFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      await handleFile(e.target.files[0]);
+      await handleFiles(e.target.files);
     }
+  };
+
+  const handleRemoveResume = (id: string) => {
+    const updatedResumes = uploadedResumes.filter(resume => resume.id !== id);
+    onResumeUpload(updatedResumes);
+    toast.info("Resume removed");
   };
 
   return (
@@ -78,7 +96,7 @@ const ResumeUpload = ({ onResumeUpload }: ResumeUploadProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-brand-purple">
           <FileUp className="h-5 w-5" />
-          Upload Resume
+          Upload Resumes
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -103,20 +121,19 @@ const ResumeUpload = ({ onResumeUpload }: ResumeUploadProps) => {
               <p className="text-sm font-medium">
                 {isUploading ? (
                   "Processing..."
-                ) : fileName ? (
-                  <span className="text-brand-purple">{fileName}</span>
                 ) : (
                   <>
                     <span className="font-semibold">Click to upload</span> or drag
-                    and drop
+                    and drop multiple resumes
                   </>
                 )}
               </p>
-              <p className="text-xs text-gray-500 mt-1">PDF (max 5MB)</p>
+              <p className="text-xs text-gray-500 mt-1">PDF files only (max 5MB each)</p>
             </div>
             <Input
               id="resume-upload"
               type="file"
+              multiple
               accept=".pdf"
               className="hidden"
               onChange={handleFileInput}
@@ -129,11 +146,35 @@ const ResumeUpload = ({ onResumeUpload }: ResumeUploadProps) => {
               disabled={isUploading}
             >
               <label htmlFor="resume-upload" className="cursor-pointer">
-                {isUploading ? "Processing..." : "Select file"}
+                {isUploading ? "Processing..." : "Select files"}
               </label>
             </Button>
           </div>
         </div>
+
+        {uploadedResumes.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <h4 className="font-medium text-sm text-gray-700">Uploaded Resumes:</h4>
+            <ul className="space-y-2 max-h-60 overflow-y-auto">
+              {uploadedResumes.map((resume) => (
+                <li 
+                  key={resume.id} 
+                  className="flex justify-between items-center p-2 bg-gray-50 rounded-md text-sm"
+                >
+                  <span className="truncate mr-2">{resume.fileName}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-gray-500 hover:text-red-500"
+                    onClick={() => handleRemoveResume(resume.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

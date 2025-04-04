@@ -3,14 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AnalysisResult } from "@/types";
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, FileText } from "lucide-react";
 
 interface MatchResultsProps {
   results: AnalysisResult;
 }
 
 const MatchResults = ({ results }: MatchResultsProps) => {
-  const { matchPercentage, strengths, improvements, keywordMatches, detailedFeedback } = results;
+  const { matchPercentage, strengths, improvements, keywordMatches, detailedFeedback, fileName } = results;
   
   // Determine color based on match percentage
   const getMatchColor = (percentage: number) => {
@@ -27,6 +27,12 @@ const MatchResults = ({ results }: MatchResultsProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Resume Name */}
+      <div className="flex items-center gap-2 text-xl font-semibold text-brand-purple">
+        <FileText className="h-5 w-5" />
+        {fileName}
+      </div>
+      
       {/* Match Score */}
       <Card className="border-brand-purple shadow-md">
         <CardHeader className="pb-2">
