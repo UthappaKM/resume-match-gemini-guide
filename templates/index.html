@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Match - Optimize your resume for your dream job</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <div x-data="appData()" class="flex flex-col min-h-screen">
+        <!-- Header -->
+        <header class="bg-white border-b">
+            <div class="container mx-auto py-6 px-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <span class="text-purple-600">Resume</span>
+                            <span class="text-blue-600">Match</span>
+                        </h1>
+                        <p class="text-sm text-gray-500">
+                            Optimize your resume for your dream job
+                        </p>
+                    </div>
+                    
+                    <button 
+                        x-show="uploadedResumes.length > 0 || analysisResults.length > 0"
+                        @click="resetApp"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                        Start Over
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto py-8 px-4 flex-grow">
+            <!-- Selected Result View -->
+            <div x-show="selectedResult" class="space-y-4">
+                <button 
+                    @click="selectedResult = null"
+                    class="mb-4 px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                    ← Back to Rankings
+                </button>
+                
+                <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold text-gray-800" x-text="selectedResult.fileName"></h2>
+                            <div class="flex items-center">
+                                <span class="text-2xl font-bold" x-text="selectedResult.matchPercentage + '%'"></span>
+                                <span class="ml-1 text-gray-500 text-sm">match</span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="font-semibold text-green-600 mb-2">Strengths</h3>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <template x-for="strength in selectedResult.strengths" :key="strength">
+                                            <li class="text-gray-700" x-text="strength"></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="font-semibold text-amber-600 mb-2">Areas for Improvement</h3>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <template x-for="improvement in selectedResult.improvements" :key="improvement">
+                                            <li class="text-gray-700" x-text="improvement"></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="font-semibold text-blue-600 mb-2">Keyword Matches</h3>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <h4 class="text-sm text-gray-500">Found in your resume:</h4>
+                                            <div class="flex flex-wrap gap-2 mt-1">
+                                                <template x-for="keyword in selectedResult.keywordMatches.matched" :key="keyword">
+                                                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full" x-text="keyword"></span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <h4 class="text-sm text-gray-500">Missing from your resume:</h4>
+                                            <div class="flex flex-wrap gap-2 mt-1">
+                                                <template x-for="keyword in selectedResult.keywordMatches.missing" :key="keyword">
+                                                    <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full" x-text="keyword"></span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="font-semibold text-purple-600 mb-2">Detailed Feedback</h3>
+                                    <p class="text-gray-700" x-text="selectedResult.detailedFeedback"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results Ranking View -->
+            <div x-show="!selectedResult && analysisResults.length > 0" class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800">Resume Rankings</h2>
+                <p class="text-gray-600">Here's how your resumes ranked against the job description</p>
+                
+                <div class="grid gap-4">
+                    <template x-for="(result, index) in sortedResults" :key="result.resumeId">
+                        <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+                            <div class="p-4 flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <div class="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 flex items-center justify-center">
+                                        <span class="font-semibold text-gray-700" x-text="index + 1"></span>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-medium" x-text="result.fileName"></h3>
+                                        <div class="flex items-center mt-1">
+                                            <div class="bg-gray-200 rounded-full h-2 w-24">
+                                                <div 
+                                                    class="h-2 rounded-full" 
+                                                    :class="getMatchColorClass(result.matchPercentage)"
+                                                    :style="'width: ' + result.matchPercentage + '%'"
+                                                ></div>
+                                            </div>
+                                            <span 
+                                                class="ml-2 text-sm" 
+                                                :class="getTextColorClass(result.matchPercentage)"
+                                                x-text="result.matchPercentage + '%'"
+                                            ></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button 
+                                    @click="selectResult(result)"
+                                    class="px-4 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
+                                >
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            
+            <!-- Upload & Job Description View -->
+            <div x-show="!selectedResult && analysisResults.length === 0" class="grid md:grid-cols-2 gap-8">
+                <!-- Resume Upload -->
+                <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-center gap-2 text-purple-600 font-bold mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Upload Resumes
+                        </div>
+                        
+                        <div
+                            @dragenter.prevent="dragActive = true"
+                            @dragover.prevent="dragActive = true"
+                            @dragleave.prevent="dragActive = false"
+                            @drop.prevent="handleFileDrop($event)"
+                            :class="dragActive ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-purple-300'"
+                            class="border-2 border-dashed rounded-lg p-6 transition-colors"
+                        >
+                            <div class="flex flex-col items-center justify-center space-y-4 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" :class="dragActive ? 'text-purple-600' : 'text-gray-400'" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                
+                                <div>
+                                    <p class="text-sm font-medium">
+                                        <template x-if="isUploading">
+                                            Processing...
+                                        </template>
+                                        <template x-if="!isUploading">
+                                            <span>
+                                                <span class="font-semibold">Click to upload</span>
+                                                or drag and drop multiple resumes
+                                            </span>
+                                        </template>
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-1">PDF files only (max 5MB each)</p>
+                                </div>
+                                
+                                <input 
+                                    id="resume-upload" 
+                                    type="file" 
+                                    multiple 
+                                    accept=".pdf" 
+                                    class="hidden" 
+                                    @change="handleFileInput"
+                                    :disabled="isUploading" 
+                                />
+                                
+                                <label 
+                                    for="resume-upload" 
+                                    class="cursor-pointer px-4 py-2 border border-purple-600 text-purple-600 rounded hover:bg-purple-50"
+                                    :class="{ 'opacity-50 cursor-not-allowed': isUploading }"
+                                >
+                                    <template x-if="isUploading">Processing...</template>
+                                    <template x-if="!isUploading">Select files</template>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Uploaded Resumes List -->
+                        <div x-show="uploadedResumes.length > 0" class="mt-4 space-y-2">
+                            <h4 class="font-medium text-sm text-gray-700">Uploaded Resumes:</h4>
+                            <ul class="space-y-2 max-h-60 overflow-y-auto">
+                                <template x-for="resume in uploadedResumes" :key="resume.id">
+                                    <li class="flex justify-between items-center p-2 bg-gray-50 rounded-md text-sm">
+                                        <span class="truncate mr-2" x-text="resume.fileName"></span>
+                                        <button 
+                                            @click="removeResume(resume.id)"
+                                            class="text-gray-500 hover:text-red-500 focus:outline-none"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Job Description & Analysis -->
+                <div class="space-y-4">
+                    <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-center gap-2 text-blue-600 font-bold mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Job Description
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="job-description" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Paste the job description here
+                                    </label>
+                                    <textarea 
+                                        id="job-description" 
+                                        x-model="jobDescription" 
+                                        rows="10" 
+                                        class="w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                                        placeholder="Paste the job description here to match with your resume..."
+                                        :disabled="isAnalyzing"
+                                    ></textarea>
+                                </div>
+                                
+                                <button 
+                                    @click="analyzeResumes"
+                                    class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    :class="{ 'opacity-50 cursor-not-allowed': isAnalyzing || uploadedResumes.length === 0 || !jobDescription.trim() }"
+                                    :disabled="isAnalyzing || uploadedResumes.length === 0 || !jobDescription.trim()"
+                                >
+                                    <template x-if="isAnalyzing">
+                                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </template>
+                                    <span x-text="isAnalyzing ? 'Analyzing...' : 'Analyze Resume'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Analysis Progress -->
+                    <div 
+                        x-show="isAnalyzing" 
+                        class="bg-white border rounded-lg shadow-sm overflow-hidden p-6"
+                    >
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-medium">Analyzing Resumes...</h3>
+                                <span x-text="completedAnalysis + ' / ' + uploadedResumes.length"></span>
+                            </div>
+                            
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                    class="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-in-out" 
+                                    :style="'width: ' + (completedAnalysis / uploadedResumes.length * 100) + '%'"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-auto border-t bg-white">
+            <div class="container mx-auto py-4 px-4 text-center text-sm text-gray-500">
+                <p>Powered by Google Gemini API</p>
+            </div>
+        </footer>
+        
+        <!-- Toast notifications -->
+        <div class="fixed inset-x-0 bottom-0 px-4 pb-4 sm:px-6 sm:pb-6 z-50">
+            <div id="toast-container" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <script>
+        function appData() {
+            return {
+                uploadedResumes: [],
+                jobDescription: '',
+                analysisResults: [],
+                selectedResult: null,
+                isUploading: false,
+                isAnalyzing: false,
+                dragActive: false,
+                completedAnalysis: 0,
+                
+                get sortedResults() {
+                    return [...this.analysisResults].sort((a, b) => b.matchPercentage - a.matchPercentage);
+                },
+                
+                resetApp() {
+                    this.uploadedResumes = [];
+                    this.jobDescription = '';
+                    this.analysisResults = [];
+                    this.selectedResult = null;
+                    this.isUploading = false;
+                    this.isAnalyzing = false;
+                    this.dragActive = false;
+                    this.completedAnalysis = 0;
+                },
+                
+                handleFileDrop(event) {
+                    this.dragActive = false;
+                    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+                        this.handleFiles(event.dataTransfer.files);
+                    }
+                },
+                
+                handleFileInput(event) {
+                    if (event.target.files && event.target.files.length > 0) {
+                        this.handleFiles(event.target.files);
+                    }
+                },
+                
+                async handleFiles(files) {
+                    const fileArray = Array.from(files);
+                    const pdfFiles = fileArray.filter(file => file.type === 'application/pdf');
+                    
+                    if (pdfFiles.length === 0) {
+                        this.showToast('Please upload PDF files only', 'error');
+                        return;
+                    }
+                    
+                    if (pdfFiles.some(file => file.size > 5 * 1024 * 1024)) {
+                        this.showToast('One or more files exceed the 5MB limit', 'error');
+                        return;
+                    }
+                    
+                    this.isUploading = true;
+                    
+                    const formData = new FormData();
+                    pdfFiles.forEach(file => {
+                        formData.append('file', file);
+                    });
+                    
+                    try {
+                        const response = await fetch('/upload-resume', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to upload resume');
+                        }
+                        
+                        this.uploadedResumes = [...this.uploadedResumes, ...data.resumes];
+                        this.showToast(`${pdfFiles.length} resume${pdfFiles.length > 1 ? 's' : ''} uploaded successfully!`, 'success');
+                    } catch (error) {
+                        console.error('Upload error:', error);
+                        this.showToast('Failed to process resumes. Please try again.', 'error');
+                    } finally {
+                        this.isUploading = false;
+                    }
+                },
+                
+                async removeResume(id) {
+                    try {
+                        const response = await fetch(`/delete-resume/${id}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Failed to delete resume');
+                        }
+                        
+                        this.uploadedResumes = this.uploadedResumes.filter(resume => resume.id !== id);
+                        this.analysisResults = this.analysisResults.filter(result => result.resumeId !== id);
+                        
+                        if (this.selectedResult && this.selectedResult.resumeId === id) {
+                            this.selectedResult = null;
+                        }
+                        
+                        this.showToast('Resume removed', 'info');
+                    } catch (error) {
+                        console.error('Delete error:', error);
+                        this.showToast('Failed to remove resume', 'error');
+                    }
+                },
+                
+                async analyzeResumes() {
+                    if (this.uploadedResumes.length === 0) {
+                        this.showToast('Please upload at least one resume', 'error');
+                        return;
+                    }
+                    
+                    if (!this.jobDescription.trim()) {
+                        this.showToast('Please enter a job description', 'error');
+                        return;
+                    }
+                    
+                    this.isAnalyzing = true;
+                    this.analysisResults = [];
+                    this.selectedResult = null;
+                    this.completedAnalysis = 0;
+                    
+                    try {
+                        const response = await fetch('/analyze-resumes', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                jobDescription: this.jobDescription,
+                                resumeIds: this.uploadedResumes.map(resume => resume.id)
+                            }),
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Analysis failed');
+                        }
+                        
+                        this.analysisResults = data.results;
+                        this.completedAnalysis = this.uploadedResumes.length;
+                    } catch (error) {
+                        console.error('Analysis failed:', error);
+                        this.showToast('Analysis failed. Please try again.', 'error');
+                    } finally {
+                        this.isAnalyzing = false;
+                    }
+                },
+                
+                selectResult(result) {
+                    this.selectedResult = result;
+                    window.scrollTo(0, 0);
+                },
+                
+                getMatchColorClass(percentage) {
+                    if (percentage >= 80) return 'bg-green-500';
+                    if (percentage >= 70) return 'bg-blue-500';
+                    if (percentage >= 60) return 'bg-yellow-500';
+                    return 'bg-red-500';
+                },
+                
+                getTextColorClass(percentage) {
+                    if (percentage >= 80) return 'text-green-600';
+                    if (percentage >= 70) return 'text-blue-600';
+                    if (percentage >= 60) return 'text-yellow-600';
+                    return 'text-red-600';
+                },
+                
+                showToast(message, type = 'info') {
+                    const toast = document.createElement('div');
+                    toast.className = 'transform transition-all duration-300 ease-in-out translate-y-2 opacity-0 flex p-4 mb-2 rounded-lg shadow-md max-w-md mx-auto';
+                    
+                    // Apply color based on type
+                    switch(type) {
+                        case 'success':
+                            toast.classList.add('bg-green-50', 'border-l-4', 'border-green-500', 'text-green-700');
+                            break;
+                        case 'error':
+                            toast.classList.add('bg-red-50', 'border-l-4', 'border-red-500', 'text-red-700');
+                            break;
+                        case 'warning':
+                            toast.classList.add('bg-yellow-50', 'border-l-4', 'border-yellow-500', 'text-yellow-700');
+                            break;
+                        default:
+                            toast.classList.add('bg-blue-50', 'border-l-4', 'border-blue-500', 'text-blue-700');
+                    }
+                    
+                    toast.innerHTML = `
+                        <div class="flex-shrink-0 mr-3">
+                            ${type === 'success' ? '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' : ''}
+                            ${type === 'error' ? '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>' : ''}
+                            ${type === 'warning' ? '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>' : ''}
+                            ${type === 'info' ? '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>' : ''}
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm">${message}</p>
+                        </div>
+                        <button class="ml-4 text-gray-400 hover:text-gray-500 focus:outline-none">
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    `;
+                    
+                    const toastContainer = document.getElementById('toast-container');
+                    toastContainer.appendChild(toast);
+                    
+                    // Button to dismiss toast
+                    const dismissButton = toast.querySelector('button');
+                    dismissButton.addEventListener('click', () => {
+                        toast.style.opacity = '0';
+                        toast.style.transform = 'translateY(1rem)';
+                        setTimeout(() => {
+                            toast.remove();
+                        }, 300);
+                    });
+                    
+                    // Show toast with animation
+                    setTimeout(() => {
+                        toast.style.transform = 'translateY(0)';
+                        toast.style.opacity = '1';
+                    }, 10);
+                    
+                    // Auto dismiss after 5 seconds
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.style.opacity = '0';
+                            toast.style.transform = 'translateY(1rem)';
+                            setTimeout(() => {
+                                if (toast.parentNode) {
+                                    toast.remove();
+                                }
+                            }, 300);
+                        }
+                    }, 5000);
+                }
+            };
+        }
+    </script>
+</body>
+</html>

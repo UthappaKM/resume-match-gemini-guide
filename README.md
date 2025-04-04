@@ -1,73 +1,62 @@
-# Welcome to your Lovable project
 
-## Project info
+# Resume Match Flask Application
 
-**URL**: https://lovable.dev/projects/dbe946b3-c708-4202-aed0-42f035aafd07
+This is a Flask application that helps users match their resumes against job descriptions using AI analysis.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- Upload multiple PDF resumes
+- Enter job description text
+- Get AI-powered analysis comparing resumes to the job description
+- See match percentage, strengths, areas for improvement, and keyword matches
+- View detailed feedback for each resume
 
-**Use Lovable**
+## Setup Instructions
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/dbe946b3-c708-4202-aed0-42f035aafd07) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Clone the repository:
+```
+git clone <repository-url>
+cd resume-match-flask
 ```
 
-**Edit a file directly in GitHub**
+2. Create a virtual environment and activate it:
+```
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Install the dependencies:
+```
+pip install -r requirements.txt
+```
 
-**Use GitHub Codespaces**
+4. Run the application:
+```
+python app.py
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+5. Open your web browser and navigate to:
+```
+http://127.0.0.1:5000/
+```
 
-## What technologies are used for this project?
+## Integrating with Google Gemini API
 
-This project is built with:
+This application includes a mock implementation of resume analysis. To integrate with the actual Google Gemini API:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Sign up for Google Gemini API access: https://ai.google.dev/
+2. Get your API key
+3. Modify the `analyze_with_gemini` function in `app.py` to use the Gemini API client
 
-## How can I deploy this project?
+## Project Structure
 
-Simply open [Lovable](https://lovable.dev/projects/dbe946b3-c708-4202-aed0-42f035aafd07) and click on Share -> Publish.
+- `app.py`: Main Flask application file
+- `templates/index.html`: HTML template for the web interface
+- `uploads/`: Folder where uploaded PDFs are stored
 
-## Can I connect a custom domain to my Lovable project?
+## Technologies Used
 
-Yes it is!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Flask: Python web framework
+- Alpine.js: JavaScript framework for frontend interactivity
+- Tailwind CSS: Utility-first CSS framework for styling
+- Google Gemini API: AI for resume analysis (mock implementation)
