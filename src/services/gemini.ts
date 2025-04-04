@@ -32,26 +32,35 @@ const calculateKeywordMatches = (resumeText: string, jobDescription: string) => 
 const calculateMatchPercentage = (resumeText: string, jobDescription: string, keywordMatches: { matched: string[], missing: string[] }) => {
   const totalKeywords = keywordMatches.matched.length + keywordMatches.missing.length;
   
-  // Base score from keyword matches (70% of the total score)
+  // Base score from keyword matches (60% of the total score)
   let matchScore = totalKeywords > 0 
-    ? (keywordMatches.matched.length / totalKeywords) * 70 
-    : 35; // Default to middle score if no keywords detected
+    ? (keywordMatches.matched.length / totalKeywords) * 60 
+    : 30; // Default to middle score if no keywords detected
   
-  // Add some variance based on resume length (assumption: more detailed resumes might be better)
-  // This accounts for 10% of the score
-  const resumeLength = resumeText.length;
-  const lengthScore = Math.min(10, Math.max(0, resumeLength / 1000)); // 0-10 points based on length
+  // Enhance the base score for better matching percentages
+  if (keywordMatches.matched.length > 0) {
+    // Bonus points for having more matched keywords
+    matchScore += Math.min(15, keywordMatches.matched.length * 3);
+  }
   
-  // Add some points for having certain sections (education, experience, skills)
-  // This accounts for 20% of the score
+  // Add points for resume sections (up to 25%)
   let sectionScore = 0;
-  if (resumeText.toLowerCase().includes("experience")) sectionScore += 7;
+  if (resumeText.toLowerCase().includes("experience")) sectionScore += 8;
   if (resumeText.toLowerCase().includes("education")) sectionScore += 7;
-  if (resumeText.toLowerCase().includes("skills")) sectionScore += 6;
+  if (resumeText.toLowerCase().includes("skills")) sectionScore += 10;
   
-  // Calculate final score and ensure it's between 40-95%
-  const rawScore = matchScore + lengthScore + sectionScore;
-  return Math.min(95, Math.max(40, Math.round(rawScore)));
+  // Check for specific section quality
+  if (resumeText.toLowerCase().includes("project") && 
+      resumeText.toLowerCase().includes("develop")) {
+    sectionScore += 5;
+  }
+  
+  // Length and content quality bonus (up to 10 points)
+  const contentQualityScore = Math.min(10, Math.max(5, resumeText.length / 500));
+  
+  // Calculate final score and ensure it's between 55-98%
+  const rawScore = matchScore + sectionScore + contentQualityScore;
+  return Math.min(98, Math.max(55, Math.round(rawScore)));
 };
 
 // Generate realistic strengths based on keyword matches
@@ -136,7 +145,7 @@ const generateDetailedFeedback = (
   } else if (matchPercentage >= 60) {
     feedback += "Your resume shows good potential for this position, but could use some improvements. ";
   } else {
-    feedback += "There's a significant gap between your resume and this job description. ";
+    feedback += "There's a gap between your resume and this job description. Consider the suggested improvements. ";
   }
   
   if (keywordMatches.matched.length > 0) {
@@ -208,17 +217,25 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
       
       // Add different content based on filename to simulate different resumes
       if (fileNameLower.includes("developer") || fileNameLower.includes("engineer")) {
-        mockContent += "Experience: 5 years of software development experience. Skills: JavaScript, TypeScript, React, Node.js. " +
-          "Education: Bachelor's degree in Computer Science. Projects: Built a responsive web application using React.";
+        mockContent += "Experience: 5 years of software development experience. Skills: JavaScript, TypeScript, React, Node.js, AWS, Docker. " +
+          "Education: Bachelor's degree in Computer Science. Projects: Built a responsive web application using React and TypeScript. " +
+          "Achievements: Reduced application load time by 40% through code optimization. Collaborated with cross-functional teams to deliver features.";
       } else if (fileNameLower.includes("manager") || fileNameLower.includes("lead")) {
-        mockContent += "Experience: 8 years of team leadership and project management. Skills: Agile, Scrum, team building, communication. " +
-          "Education: MBA in Business Administration. Projects: Led a team of 10 developers to deliver a complex system.";
+        mockContent += "Experience: 8 years of team leadership and project management. Skills: Agile, Scrum, team building, communication, strategic planning. " +
+          "Education: MBA in Business Administration. Projects: Led a team of 10 developers to deliver a complex system on time and under budget. " +
+          "Achievements: Increased team productivity by 30% through process improvements. Successfully delivered 12 major projects.";
       } else if (fileNameLower.includes("design") || fileNameLower.includes("ui")) {
-        mockContent += "Experience: 4 years in UI/UX design. Skills: Figma, Sketch, user research, wireframing. " +
-          "Education: Degree in Graphic Design. Projects: Redesigned the company's main product interface.";
+        mockContent += "Experience: 4 years in UI/UX design. Skills: Figma, Sketch, user research, wireframing, prototyping, responsive design. " +
+          "Education: Degree in Graphic Design. Projects: Redesigned the company's main product interface resulting in 25% increase in user engagement. " +
+          "Achievements: Created design system that reduced development time by 20%. Conducted user testing with over 100 participants.";
+      } else if (fileNameLower.includes("data") || fileNameLower.includes("analyst")) {
+        mockContent += "Experience: 6 years in data analysis and science. Skills: Python, SQL, machine learning, data visualization, statistics, AWS. " +
+          "Education: Master's degree in Data Science. Projects: Developed predictive models that increased conversion rates by 15%. " +
+          "Achievements: Automated reporting processes saving 10 hours per week. Created dashboards used by executive leadership for decision making.";
       } else {
-        mockContent += "Experience: Various professional roles. Skills: Communication, teamwork, problem-solving. " +
-          "Education: Bachelor's degree. Projects: Contributed to multiple team initiatives.";
+        mockContent += "Experience: Various professional roles. Skills: Communication, teamwork, problem-solving, project management. " +
+          "Education: Bachelor's degree. Projects: Contributed to multiple team initiatives with positive outcomes. " +
+          "Achievements: Consistently met or exceeded performance targets. Received recognition for contributions to team success.";
       }
       
       resolve(mockContent);
